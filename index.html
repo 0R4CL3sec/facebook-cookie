@@ -63,13 +63,9 @@
   </div>
 
   <script>
-    // NOTE: Standard mobile browsers block cross-domain cookie injection.
-    // This logic only works if this page is run inside a mobile browser 
-    // that supports Chrome Extension APIs (like Kiwi Browser on Android).
-
     document.getElementById('loginBtn').onclick = async () => {
       const raw = document.getElementById('cookieInput').value.trim();
-      if (!raw) return alert("Cookie payload is empty");
+      if (!raw) return;
 
       if (typeof chrome !== 'undefined' && chrome.cookies) {
         const pairs = raw.split(';');
@@ -87,8 +83,6 @@
           }
         }
         window.location.href = "https://m.facebook.com/";
-      } else {
-        alert("Action Blocked: Standard mobile browsers (Safari/Chrome Mobile) do not allow websites to inject cookies into Facebook. You must use a browser like Kiwi (Android) or Orion (iOS) with extension support.");
       }
     };
 
@@ -100,10 +94,7 @@
             await chrome.cookies.remove({ url: url, name: cookie.name });
           }
           document.getElementById('cookieInput').value = "";
-          alert("Session wiped.");
         });
-      } else {
-        alert("Cannot wipe cookies outside of an extension environment.");
       }
     };
   </script>

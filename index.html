@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>N0VAX Mobile Auth</title>
+<style>
+  :root {
+    --bg: #0a0a0b; --panel: #111113; --line: #232326;
+    --txt: #e8e8ea; --dim: #8a8a91; --acc: #5ec269;
+    --cut: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--txt);
+    font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+    font-size: 14px; padding: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh;
+  }
+  .container {
+    width: 100%; max-width: 400px;
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 20px; border-radius: 8px;
+    margin-top: 40px;
+  }
+  h2 { font-size: 16px; margin-bottom: 8px; color: var(--acc); text-align: center; }
+  p { color: var(--dim); font-size: 12px; margin-bottom: 16px; text-align: center; }
+  
+  textarea {
+    width: 100%; height: 140px;
+    background: rgba(10, 10, 11, 0.8);
+    border: 1px solid var(--line); color: var(--txt);
+    padding: 12px; margin-bottom: 16px;
+    font-family: inherit; font-size: 12px;
+    outline: none; resize: none; border-radius: 4px;
+  }
+  textarea:focus { border-color: var(--acc); }
+  
+  button {
+    width: 100%; background: var(--acc); color: #000;
+    border: none; font: inherit; font-weight: 600; font-size: 15px;
+    padding: 12px; margin-bottom: 12px; cursor: pointer;
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  }
+  button.sec {
+    background: transparent; color: var(--dim);
+    border: 1px solid var(--line); clip-path: none; border-radius: 4px;
+  }
+  button:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>N0VAX Mobile</h2>
+    <p>paste facebook session cookies</p>
+    
+    <textarea id="cookieInput" placeholder="c_user=...; xs=...; sb=...;"></textarea>
+    
+    <button id="loginBtn">Inject & Login</button>
+    <button id="logoutBtn" class="sec">Wipe Session</button>
+  </div>
+
+  <script>
+    // NOTE: Standard mobile browsers block cross-domain cookie injection.
+    // This logic only works if this page is run inside a mobile browser 
+    // that supports Chrome Extension APIs (like Kiwi Browser on Android).
+
+    document.getElementById('loginBtn').onclick = async () => {
+      const raw = document.getElementById('cookieInput').value.trim();
+      if (!raw) return alert("Cookie payload is empty");
+
+      if (typeof chrome !== 'undefined' && chrome.cookies) {
+        const pairs = raw.split(';');
+        for (let pair of pairs) {
+          const [name, ...val] = pair.trim().split('=');
+          if (name && val.length > 0) {
+            await chrome.cookies.set({
+              url: "https://www.facebook.com",
+              name: name.trim(),
+              value: val.join('=').trim(),
+              domain: ".facebook.com",
+              path: "/", secure: true, sameSite: "no_restriction",
+              expirationDate: (Math.floor(Date.now() / 1000) + 2592000)
+            });
+          }
+        }
+        window.location.href = "https://m.facebook.com/";
+      } else {
+        alert("Action Blocked: Standard mobile browsers (Safari/Chrome Mobile) do not allow websites to inject cookies into Facebook. You must use a browser like Kiwi (Android) or Orion (iOS) with extension support.");
+      }
+    };
+
+    document.getElementById('logoutBtn').onclick = async () => {
+      if (typeof chrome !== 'undefined' && chrome.cookies) {
+        chrome.cookies.getAll({ domain: ".facebook.com" }, async (cookies) => {
+          for (let cookie of cookies) {
+            const url = `https://${cookie.domain.replace(/^\./, "")}${cookie.path}`;
+            await chrome.cookies.remove({ url: url, name: cookie.name });
+          }
+          document.getElementById('cookieInput').value = "";
+          alert("Session wiped.");
+        });
+      } else {
+        alert("Cannot wipe cookies outside of an extension environment.");
+      }
+    };
+  </script>
+</body>
+</html>
